@@ -17,15 +17,6 @@ import (
 // HandleOutputFunc ...
 type HandleOutputFunc func(name Name)
 
-// Sex ...
-type Sex bool
-
-// SexBoy ...
-const (
-	SexBoy  Sex = false
-	SexGirl Sex = true
-)
-
 // HelpContent ...
 const HelpContent = "正在使用Fate生成姓名列表，如遇到问题请访问项目地址：https://github.com/godcong/fate获取帮助!"
 
@@ -255,6 +246,8 @@ func (f *fateImpl) getWugeName(name chan<- *Name) (e error) {
 	}()
 	var f1s []*Character
 	var f2s []*Character
+	fsa := map[int][]*Character{}
+	bazi := NewBazi(f.born)
 	for l := range lucky {
 		if f.config.FilterMode == config.FilterModeCustom {
 			//TODO
@@ -278,24 +271,36 @@ func (f *fateImpl) getWugeName(name chan<- *Name) (e error) {
 		if f.debug {
 			log.Infow("lucky", "l1", l.LastStroke1, "l2", l.LastStroke2, "f1", l.FirstStroke1, "f2", l.FirstStroke2)
 		}
-		if f.config.Regular {
-			f1s, e = f.db.GetCharacters(Stoker(l.FirstStroke1, Regular()))
+		if fsa[l.FirstStroke1] == nil {
+			if f.config.Regular {
+				f1s, e = f.db.GetCharacters(Stoker(l.FirstStroke1, Regular()))
+			} else {
+				f1s, e = f.db.GetCharacters(Stoker(l.FirstStroke1))
+			}
+
+			if e != nil {
+				return Wrap(e, "first stroke1 error")
+			}
+
+			fsa[l.FirstStroke1] = f1s
 		} else {
-			f1s, e = f.db.GetCharacters(Stoker(l.FirstStroke1))
+			f1s = fsa[l.FirstStroke1]
 		}
 
-		if e != nil {
-			return Wrap(e, "first stroke1 error")
-		}
+		if fsa[l.FirstStroke2] == nil {
+			if f.config.Regular {
+				f2s, e = f.db.GetCharacters(Stoker(l.FirstStroke2, Regular()))
+			} else {
+				f2s, e = f.db.GetCharacters(Stoker(l.FirstStroke2))
+			}
 
-		if f.config.Regular {
-			f2s, e = f.db.GetCharacters(Stoker(l.FirstStroke2, Regular()))
+			if e != nil {
+				return Wrap(e, "first stoke2 error")
+			}
+
+			fsa[l.FirstStroke2] = f2s
 		} else {
-			f2s, e = f.db.GetCharacters(Stoker(l.FirstStroke2))
-		}
-
-		if e != nil {
-			return Wrap(e, "first stoke2 error")
+			f2s = fsa[l.FirstStroke2]
 		}
 
 		for _, f1 := range f1s {
@@ -307,7 +312,7 @@ func (f *fateImpl) getWugeName(name chan<- *Name) (e error) {
 					continue
 				}
 				n := createName(f, f1, f2)
-				n.baZi = NewBazi(f.born)
+				n.baZi = bazi
 				name <- n
 			}
 		}
