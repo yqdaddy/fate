@@ -1,5 +1,10 @@
 package fate
 
+import (
+	"math"
+	"strings"
+)
+
 //XiYong 喜用神
 type XiYong struct {
 	WuXingFen          map[string]int
@@ -37,7 +42,7 @@ func (xy *XiYong) GetFen(s string) (point int) {
 }
 
 func (xy *XiYong) minFenWuXing(ss ...string) (wx string) {
-	min := 9999
+	min := math.MaxInt32
 	for _, s := range ss {
 		if xy.WuXingFen[s] < min {
 			min = xy.WuXingFen[s]
@@ -64,7 +69,7 @@ func (xy *XiYong) QiangRuo() bool {
 
 func filterXiYong(yong string, cs ...*Character) (b bool) {
 	for _, c := range cs {
-		if c.WuXing == yong {
+		if strings.Contains(yong, c.WuXing) {
 			return true
 		}
 	}
